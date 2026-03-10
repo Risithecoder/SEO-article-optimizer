@@ -46,6 +46,14 @@ async def start_pipeline(
         raise HTTPException(400, "Failed to start pipeline")
     return {"status": "started", "dry_run": dry_run, "limit": limit}
 
+@router.post("/stop_pipeline")
+async def stop_pipeline():
+    """Request the running pipeline to stop gracefuly."""
+    stopped = controller.stop()
+    if not stopped:
+        raise HTTPException(400, "Pipeline is not currently running")
+    return {"status": "stop_requested"}
+
 
 @router.get("/pipeline_status")
 async def pipeline_status():

@@ -38,19 +38,12 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (pipelineComplete) {
-      fetchArticles();
-      fetchStats();
-    }
+    if (pipelineComplete) { fetchArticles(); fetchStats(); }
   }, [pipelineComplete, fetchArticles, fetchStats]);
 
   useEffect(() => {
-    fetchArticles();
-    fetchStats();
-    const interval = setInterval(() => {
-      fetchArticles();
-      fetchStats();
-    }, 10000);
+    fetchArticles(); fetchStats();
+    const interval = setInterval(() => { fetchArticles(); fetchStats(); }, 10000);
     return () => clearInterval(interval);
   }, [fetchArticles, fetchStats]);
 
@@ -65,79 +58,82 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#F5F5F7' }}>
-      {/* Top bar — frosted glass */}
-      <header className="sticky top-0 z-40 border-b" style={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderColor: 'rgba(0,0,0,0.06)' }}>
-        <div className="max-w-7xl mx-auto px-10 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-base font-semibold tracking-tight" style={{ color: '#1D1D1F' }}>Oliveboard AI Content Engine</h1>
-          </div>
+    <div className="min-h-screen font-sans" style={{ background: '#F5F5F7' }}>
+      {/* ─── Top bar ─── */}
+      <header
+        className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[#E5E5E7]"
+      >
+        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+          <h1 className="text-base font-semibold tracking-tight text-[#1D1D1F]">
+            Oliveboard AI Content Engine
+          </h1>
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full" style={{ background: connected ? '#1D1D1F' : '#C7C7CC' }} />
-              <span className="text-xs font-medium" style={{ color: '#86868B' }}>{connected ? 'Live' : 'Offline'}</span>
+              <span className="text-xs font-medium text-[#86868B]">
+                {connected ? 'Live' : 'Offline'}
+              </span>
             </div>
-            <div className="h-5 w-px" style={{ background: 'rgba(0,0,0,0.08)' }} />
+            <div className="h-5 w-px bg-[#E5E5E7]" />
             <DashboardToggle isMinimal={isMinimal} onToggle={() => setIsMinimal(!isMinimal)} />
           </div>
         </div>
       </header>
 
-      {/* Main layout */}
-      <div className="max-w-7xl mx-auto px-10 py-10">
-        <div className={`grid grid-cols-1 ${isMinimal ? 'lg:grid-cols-1 place-items-center min-h-[50vh]' : 'lg:grid-cols-4'} gap-10`}>
-          
+      {/* ─── Content ─── */}
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className={`flex ${isMinimal ? 'justify-center' : ''}`}>
+
           {/* Sidebar */}
           <AnimatePresence>
             {!isMinimal && (
-              <motion.div 
-                initial={{ opacity: 0, width: 0, scale: 0.95 }}
-                animate={{ opacity: 1, width: 'auto', scale: 1 }}
-                exit={{ opacity: 0, width: 0, scale: 0.95, padding: 0, margin: 0, overflow: 'hidden' }}
+              <motion.aside
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 256 }}
+                exit={{ opacity: 0, width: 0, overflow: 'hidden' }}
                 transition={{ duration: 0.3 }}
-                className="lg:col-span-1 space-y-10"
+                className="w-64 flex-shrink-0 border-r border-[#E5E5E7] pr-8"
               >
-                <StatsPanel data={stats} connected={connected} />
-              </motion.div>
+                <div className="sticky top-24 space-y-8">
+                  <StatsPanel data={stats} connected={connected} />
+                </div>
+              </motion.aside>
             )}
           </AnimatePresence>
 
-          {/* Main content */}
-          <motion.div 
-            layout
-            className={`${isMinimal ? 'w-full max-w-7xl' : 'lg:col-span-3'} space-y-10 origin-top`}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
-          >
+          {/* Main */}
+          <motion.main layout className={`flex-1 min-w-0 flex flex-col gap-8 ${isMinimal ? 'px-0 max-w-4xl w-full' : 'px-10'}`} transition={{ duration: 0.35 }}>
             <AnimatePresence>
               {!isMinimal && (
-                <motion.div
+                <motion.section
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
                   transition={{ duration: 0.3 }}
                 >
                   <PipelineStatus steps={steps} />
-                </motion.div>
+                </motion.section>
               )}
             </AnimatePresence>
 
-            <motion.div layout>
+            <section>
               <ArticleCarousel articles={articles} onSelect={handleSelectArticle} />
-            </motion.div>
+            </section>
 
             <AnimatePresence>
               {!isMinimal && (
-                <motion.div
+                <motion.section
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
                   transition={{ duration: 0.3 }}
                 >
                   <LogsPanel logs={logs} />
-                </motion.div>
+                </motion.section>
               )}
             </AnimatePresence>
-          </motion.div>
+          </motion.main>
         </div>
       </div>
 

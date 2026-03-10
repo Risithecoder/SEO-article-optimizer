@@ -299,7 +299,13 @@ class Database:
     def get_unpublished_articles(self) -> List[Dict[str, Any]]:
         """Return articles that haven't been published yet."""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM articles WHERE status = 'draft' OR status = 'optimized'")
+        cursor.execute("SELECT * FROM articles WHERE status != 'published' AND status != 'failed'")
+        return [dict(row) for row in cursor.fetchall()]
+
+    def get_articles_needing_images(self) -> List[Dict[str, Any]]:
+        """Return articles that don't have an image URL yet."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM articles WHERE (image_url IS NULL OR image_url = '') AND status != 'published'")
         return [dict(row) for row in cursor.fetchall()]
 
     def get_published_articles(self) -> List[Dict[str, Any]]:

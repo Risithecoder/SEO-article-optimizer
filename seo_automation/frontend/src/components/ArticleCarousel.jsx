@@ -1,59 +1,36 @@
-import { useRef, useState } from 'react';
 import ArticleCard from './ArticleCard';
 import { FileText } from 'lucide-react';
 
 export default function ArticleCarousel({ articles, onSelect }) {
-  const scrollRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-
   if (!articles || articles.length === 0) {
     return (
-      <div
-        className="rounded-3xl p-10 text-center flex flex-col items-center justify-center min-h-[300px]"
-        style={{ background: '#FFFFFF', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.04)' }}
-      >
-        <FileText className="w-10 h-10 mb-5" style={{ color: '#C7C7CC' }} strokeWidth={1.5} />
-        <div className="text-xl font-semibold mb-3" style={{ color: '#1D1D1F' }}>No articles generated yet</div>
-        <div className="text-base" style={{ color: '#86868B' }}>Start the pipeline to generate content.</div>
+      <div className="w-full">
+        <div className="mb-4">
+          <h2 className="text-sm uppercase tracking-wide text-gray-500 font-semibold mb-2">
+            Generated Articles
+          </h2>
+        </div>
+        <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-8 flex flex-col items-center justify-center min-h-[240px]">
+          <FileText className="w-8 h-8 text-gray-300 mb-4" strokeWidth={1.5} />
+          <div className="text-base font-semibold text-[#1D1D1F] mb-1">No articles yet</div>
+          <div className="text-sm text-[#86868B]">Start the pipeline to generate content.</div>
+        </div>
       </div>
     );
   }
 
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    setStartX(e.pageX - scrollRef.current.offsetLeft);
-    setScrollLeft(scrollRef.current.scrollLeft);
-  };
-  const handleMouseLeave = () => setIsDragging(false);
-  const handleMouseUp = () => setIsDragging(false);
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    const x = e.pageX - scrollRef.current.offsetLeft;
-    const walk = (x - startX) * 2;
-    scrollRef.current.scrollLeft = scrollLeft - walk;
-  };
-
   return (
-    <div className="w-full py-4">
-      <div className="flex items-center justify-between mb-6 px-2">
-        <h2 className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#86868B' }}>
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-sm uppercase tracking-wide text-gray-500 font-semibold">
           Generated Articles
         </h2>
-        <span className="text-xs font-medium" style={{ color: '#86868B' }}>{articles.length} articles</span>
+        <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+          {articles.length} article{articles.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      <div 
-        ref={scrollRef}
-        className={`flex gap-10 overflow-x-auto pb-8 pt-4 px-2 snap-x snap-mandatory hide-scrollbar ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-        onMouseDown={handleMouseDown}
-        onMouseLeave={handleMouseLeave}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-        style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {articles.map((article, i) => (
           <ArticleCard key={article.id || i} article={article} onSelect={onSelect} />
         ))}

@@ -19,7 +19,11 @@ export default function App() {
         setStarted(true);
       } else {
         const data = await res.json();
-        alert(data.detail || 'Failed to start pipeline');
+        if (data.detail && data.detail.toLowerCase().includes('already running')) {
+          setStarted(true);
+        } else {
+          alert(data.detail || 'Failed to start pipeline');
+        }
       }
     } catch (err) {
       // If backend isn't running yet, go to dashboard anyway for monitoring

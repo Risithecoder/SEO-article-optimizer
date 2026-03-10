@@ -1,59 +1,55 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Radio } from 'lucide-react';
 
-const levelColors = {
-  INFO: '#1D1D1F',
-  WARNING: '#6E6E73',
-  ERROR: '#1D1D1F',
-  DEBUG: '#86868B',
+const levelStyle = {
+  INFO:    'text-gray-900',
+  WARNING: 'text-gray-600',
+  ERROR:   'text-gray-900',
+  DEBUG:   'text-gray-400',
 };
 
 export default function LogsPanel({ logs }) {
-  const containerRef = useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
   }, [logs]);
 
   return (
-    <div className="rounded-3xl p-8 flex flex-col" style={{ background: '#FFFFFF', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.04)' }}>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#86868B' }}>Live Logs</h2>
-        <div className="flex items-center gap-2">
-          <Radio className="w-3 h-3 animate-pulse" style={{ color: '#1D1D1F' }} strokeWidth={2.5} />
-          <span className="text-xs font-medium" style={{ color: '#86868B' }}>{logs.length} entries</span>
-        </div>
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm uppercase tracking-wide text-gray-500 font-semibold">
+          Live System Logs
+        </h2>
+        <span className="text-xs font-medium text-gray-400">
+          {logs.length} entries
+        </span>
       </div>
 
       <div
-        ref={containerRef}
-        className="flex-1 overflow-y-auto max-h-72 font-mono text-xs space-y-2 rounded-2xl p-6"
-        style={{ background: '#FAFAFA', border: '1px solid rgba(0,0,0,0.03)' }}
+        ref={ref}
+        className="rounded-xl bg-gray-50 p-4 h-48 overflow-y-auto font-mono text-sm w-full border border-gray-100 shadow-inner"
       >
         <AnimatePresence initial={false}>
           {logs.map((log, i) => (
             <motion.div
               key={`${log.timestamp}-${i}`}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex gap-4 leading-relaxed py-1 break-words"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex gap-4 py-1 border-b border-gray-100/50 break-words last:border-0"
             >
-              <span className="flex-shrink-0" style={{ color: '#86868B' }}>{log.timestamp}</span>
-              <span className="flex-shrink-0 font-semibold" style={{ color: levelColors[log.level] || '#6E6E73' }}>
+              <span className="flex-shrink-0 text-gray-400 w-20">{log.timestamp.split(' ')[1] || log.timestamp}</span>
+              <span className={`flex-shrink-0 font-semibold w-16 ${levelStyle[log.level] || 'text-gray-500'}`}>
                 [{log.level}]
               </span>
-              <span className="break-words flex-1" style={{ color: '#1D1D1F' }}>{log.message}</span>
+              <span className="flex-1 break-words text-gray-800">{log.message}</span>
             </motion.div>
           ))}
         </AnimatePresence>
 
         {logs.length === 0 && (
-          <div className="text-center py-10 text-sm" style={{ color: '#86868B' }}>
-            Waiting for pipeline to start...
+          <div className="text-center py-10 text-gray-400 font-sans">
+            Waiting for pipeline events...
           </div>
         )}
       </div>

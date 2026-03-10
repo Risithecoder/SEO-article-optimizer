@@ -1,81 +1,111 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Square } from 'lucide-react';
 
 const statusConfig = {
-  idle: { bg: '#F5F5F7', text: '#86868B', label: 'Idle', dot: '#C7C7CC' },
-  running: { bg: '#E8E8ED', text: '#1D1D1F', label: 'Running', dot: '#1D1D1F' },
-  completed: { bg: '#F5F5F7', text: '#6E6E73', label: 'Completed', dot: '#86868B' },
-  failed: { bg: '#F5F5F7', text: '#86868B', label: 'Failed', dot: '#86868B' },
+  idle:      { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Idle' },
+  running:   { bg: 'bg-gray-200', text: 'text-gray-900', label: 'Running' },
+  completed: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Completed' },
+  failed:    { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Failed' },
 };
 
-function StepCard({ step, index }) {
+function StepRow({ step, index }) {
   const cfg = statusConfig[step.status] || statusConfig.idle;
   const isRunning = step.status === 'running';
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.06 }}
-      className="flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 break-words"
-      style={{
-        background: isRunning ? '#F5F5F7' : '#FAFAFA',
-        border: '1px solid rgba(0,0,0,0.04)',
-        boxShadow: isRunning ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-      }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className={`grid grid-cols-[220px_1fr_120px] items-center gap-4 py-3 px-4 rounded-xl transition-colors duration-150 ${isRunning ? 'bg-gray-50' : ''}`}
     >
-      <div className="relative flex-shrink-0">
-        <div className="w-3 h-3 rounded-full" style={{ background: cfg.dot }} />
-        {isRunning && (
-          <div className="absolute inset-0 w-3 h-3 rounded-full animate-ping opacity-40" style={{ background: '#1D1D1F' }} />
+      {/* Left: Step name */}
+      <div className="flex items-center gap-3 min-w-0 pr-4 border-r border-gray-100 h-full">
+        {isRunning ? (
+          <Loader2 className="animate-spin w-4 h-4 text-gray-900 flex-shrink-0" strokeWidth={2} />
+        ) : (
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${step.status === 'completed' ? 'bg-gray-400' : 'bg-gray-200'}`} />
         )}
+        <span className="text-sm font-semibold text-[#1D1D1F] truncate">{step.label}</span>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-3">
-          <span className="font-medium text-sm truncate" style={{ color: '#1D1D1F' }}>{step.label}</span>
-          <span className="text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap" style={{ background: cfg.bg, color: cfg.text }}>
-            {cfg.label}
-          </span>
-        </div>
-        {step.detail && (
-          <p className="text-xs mt-1 truncate" style={{ color: '#86868B' }}>{step.detail}</p>
-        )}
-      </div>
+      {/* Center: Description */}
+      <span className="text-sm text-[#6E6E73] truncate">
+        {step.detail || '—'}
+      </span>
 
-      {isRunning && (
-        <Loader2 className="animate-spin h-4 w-4 flex-shrink-0" style={{ color: '#1D1D1F' }} strokeWidth={2} />
-      )}
+      {/* Right: Status indicator */}
+      <div className="flex items-center justify-end">
+        <span className={`text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap ${cfg.bg} ${cfg.text}`}>
+          {cfg.label}
+        </span>
+      </div>
     </motion.div>
   );
 }
 
 export default function PipelineStatus({ steps }) {
+  const [stopping, setStopping] = useState(false);
+  const isRunning = steps?.some(s => s.status === 'running');
+
+  useEffect(() => {
+    if (!isRunning) setStopping(false);
+  }, [isRunning]);
+
+  const handleStop = async () => {
+    if (!isRunning) return;
+    setStopping(true);
+    try {
+      await fetch('/api/stop_pipeline', { method: 'POST' });
+    } catch (err) {
+      console.error('Failed to stop pipeline:', err);
+      setStopping(false);
+    }
+  };
+
   if (!steps || steps.length === 0) return null;
 
-  const completed = steps.filter((s) => s.status === 'completed').length;
-  const progress = steps.length > 0 ? (completed / steps.length) * 100 : 0;
-
   return (
-    <div className="rounded-3xl p-8" style={{ background: '#FFFFFF', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.04)' }}>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#86868B' }}>Pipeline Progress</h2>
-        <span className="text-xs font-medium" style={{ color: '#86868B' }}>{completed}/{steps.length} steps</span>
+    <div className="rounded-2xl bg-white shadow-sm border border-[#E5E5E7] p-6">
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h2 className="text-sm uppercase tracking-wide text-gray-500 font-semibold mb-2">
+            Pipeline Status
+          </h2>
+          <p className="text-sm text-[#6E6E73]">
+            Live progression of the content generation engine.
+          </p>
+        </div>
+        
+        {isRunning && (
+          <button
+            onClick={handleStop}
+            disabled={stopping}
+            title="Stop Pipeline"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {stopping ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Square className="w-4 h-4" fill="currentColor" />
+            )}
+            {stopping ? 'Stopping...' : 'Stop'}
+          </button>
+        )}
       </div>
 
-      <div className="h-2 rounded-full overflow-hidden mb-8" style={{ background: '#F5F5F7' }}>
-        <motion.div
-          className="h-full rounded-full"
-          style={{ background: '#1D1D1F' }}
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5 }}
-        />
-      </div>
+      <div className="flex flex-col gap-2">
+        {/* Header row (optional, helps structure visually) */}
+        <div className="grid grid-cols-[220px_1fr_120px] items-center gap-4 px-4 pb-2 border-b border-gray-100">
+          <span className="text-xs uppercase tracking-wide text-gray-400 font-semibold">Step</span>
+          <span className="text-xs uppercase tracking-wide text-gray-400 font-semibold">Detail</span>
+          <span className="text-xs uppercase tracking-wide text-gray-400 font-semibold text-right">Status</span>
+        </div>
 
-      <div className="space-y-4">
+        {/* Rows */}
         {steps.map((step, i) => (
-          <StepCard key={step.id} step={step} index={i} />
+          <StepRow key={step.id} step={step} index={i} />
         ))}
       </div>
     </div>

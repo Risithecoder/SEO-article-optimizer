@@ -69,6 +69,7 @@ class PipelineController:
     def __init__(self):
         self._lock = threading.Lock()
         self._running = False
+        self._cancel_requested = False
         self._thread: Optional[threading.Thread] = None
 
         # Step statuses
@@ -183,6 +184,7 @@ class PipelineController:
 
         self._reset_steps()
         self.logs.clear()
+        self._cancel_requested = False
         self._add_log("Pipeline starting...")
 
         self._thread = threading.Thread(
@@ -193,6 +195,18 @@ class PipelineController:
         self._thread.start()
         return True
 
+    def stop(self) -> bool:
+        """
+        Request the pipeline to stop gracefully.
+        Returns True if a stop was requested, False if it wasn't running.
+        """
+        with self._lock:
+            if not self._running:
+                return False
+            self._cancel_requested = True
+        self._add_log("Stop requested. Pipeline will halt after compiling current step.", "WARNING")
+        return True
+
     def _run_pipeline(self, dry_run: bool, limit: int):
         """Execute all pipeline steps in sequence."""
         try:
@@ -200,6 +214,10 @@ class PipelineController:
 
             with Database() as db:
                 # ── Step 1: Trend Fetch ─────────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("trend_fetch", StepStatus.RUNNING, "Fetching trending keywords...")
                 try:
                     if dry_run:
@@ -218,6 +236,10 @@ class PipelineController:
                     self._add_log(f"Trend fetch failed: {e}", "ERROR")
 
                 # ── Step 2: Expand ──────────────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before Keywork Expansion.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("expand", StepStatus.RUNNING, "Expanding keywords into long-tail queries...")
                 try:
                     unexpanded = db.get_unexpanded_keywords()
@@ -238,6 +260,10 @@ class PipelineController:
                     self._add_log(f"Keyword expansion failed: {e}", "ERROR")
 
                 # ── Step 3: Cluster ─────────────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before Clustering.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("cluster", StepStatus.RUNNING, "Clustering keywords into topics...")
                 try:
                     all_keywords = db.get_all_keywords()
@@ -261,6 +287,10 @@ class PipelineController:
                     self._add_log(f"Clustering failed: {e}", "ERROR")
 
                 # ── Step 4: Blueprint ───────────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before Blueprint generation.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("blueprint", StepStatus.RUNNING, "Generating article blueprints...")
                 try:
                     all_clusters = db.get_all_clusters()
@@ -291,6 +321,10 @@ class PipelineController:
                     self._add_log(f"Blueprint generation failed: {e}", "ERROR")
 
                 # ── Step 5: Generate Articles ───────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before Article generation.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("generate", StepStatus.RUNNING, "Writing articles...")
                 try:
                     pending_bps = db.get_blueprints_without_articles()[:max_articles]
@@ -315,9 +349,13 @@ class PipelineController:
                     self._add_log(f"Article generation failed: {e}", "ERROR")
 
                 # ── Step 6: Image Generation ────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before Image generation.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("image_gen", StepStatus.RUNNING, "Generating article images...")
                 try:
-                    draft_arts = db.get_unpublished_articles()
+                    draft_arts = db.get_articles_needing_images()
                     if draft_arts and not dry_run:
                         # images is a Dict: {article_id: {"filename": "...", ...}}
                         images = generate_images_for_articles(draft_arts)
@@ -337,6 +375,10 @@ class PipelineController:
                     self._add_log(f"Image generation failed: {e}", "ERROR")
 
                 # ── Step 7: SEO/AEO Optimize ────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before SEO Optimization.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("optimize", StepStatus.RUNNING, "Optimizing for SEO and AI Overviews...")
                 try:
                     drafts = db.get_unpublished_articles()
@@ -357,6 +399,10 @@ class PipelineController:
                     self._add_log(f"SEO optimization failed: {e}", "ERROR")
 
                 # ── Step 7: Internal Linking ────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before Internal Linking.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("link", StepStatus.RUNNING, "Adding internal links...")
                 try:
                     opt_arts = [a for a in db.get_all_articles() if a.get("status") == "optimized"]
@@ -374,6 +420,10 @@ class PipelineController:
                     self._add_log(f"Internal linking failed: {e}", "ERROR")
 
                 # ── Step 8: Queue for review ────────────────
+                if self._cancel_requested:
+                    self._add_log("Pipeline cancelled by user before Review queuing.", "WARNING")
+                    self._broadcast({"type": "pipeline_complete"})
+                    return
                 self._set_step("publish_queue", StepStatus.RUNNING, "Queueing articles for review...")
                 try:
                     ready = db.get_unpublished_articles()

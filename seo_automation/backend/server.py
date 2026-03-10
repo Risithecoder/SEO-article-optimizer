@@ -43,7 +43,7 @@ app.add_middleware(
 app.include_router(router)
 
 # Serve generated images
-images_dir = os.path.join(os.path.dirname(__file__), "..", "generated_images")
+images_dir = os.path.join(os.path.dirname(__file__), "..", "..", "generated_images")
 os.makedirs(images_dir, exist_ok=True)
 app.mount("/images", StaticFiles(directory=images_dir), name="images")
 
