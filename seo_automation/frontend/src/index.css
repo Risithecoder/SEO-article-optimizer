@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Light Apple-style palette */
+  --color-apple-bg: #FFFFFF;
+  --color-apple-bg-alt: #F5F5F7;
+  --color-apple-bg-subtle: #FAFAFA;
+  --color-apple-card: #FFFFFF;
+  --color-apple-blue: #0071E3;
+  --color-apple-blue-hover: #0077ED;
+  --color-apple-blue-light: rgba(0, 113, 227, 0.08);
+  --color-apple-text: #1D1D1F;
+  --color-apple-text-secondary: #6E6E73;
+  --color-apple-text-muted: #86868B;
+  --color-apple-border: rgba(0, 0, 0, 0.06);
+  --color-apple-border-hover: rgba(0, 0, 0, 0.12);
+  --color-apple-shadow: rgba(0, 0, 0, 0.04);
+  --color-apple-shadow-hover: rgba(0, 0, 0, 0.08);
+  --color-success: #34C759;
+  --color-warning: #FF9F0A;
+  --color-error: #FF3B30;
+  --color-info: #5AC8FA;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5F5F7 100%);
+  color: var(--color-apple-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Scrollbar — subtle, Apple-style */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 100px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Hide scrollbar utility */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 113, 227, 0.15);
+  color: #1D1D1F;
+}

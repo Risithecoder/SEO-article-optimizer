@@ -1,0 +1,21 @@
+# Core
+openai>=1.0.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Markdown → HTML
+markdown>=3.5.0
+
+# Google Trends
+pytrends>=4.9.0
+
+# Browser automation (PAA scraping)
+playwright>=1.40.0
+
+# Data processing (used by pytrends internally)
+pandas>=2.0.0
+
+# GUI Dashboard
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
