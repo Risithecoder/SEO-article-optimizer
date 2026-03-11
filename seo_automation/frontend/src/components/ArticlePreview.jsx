@@ -74,6 +74,18 @@ export default function ArticlePreview({ article, onClose, onRefresh }) {
             </div>
           )}
 
+          {/* Hero Image */}
+          {article.image_url && (
+            <div className="mb-8 rounded-xl overflow-hidden bg-gray-100">
+              <img
+                src={article.image_url}
+                alt={article.title || 'Article image'}
+                className="w-full h-64 object-cover"
+                onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+              />
+            </div>
+          )}
+
           {/* Grid Layout (2-column) */}
           <div className="grid grid-cols-2 gap-8 mb-8">
             {/* Left Column: Content */}

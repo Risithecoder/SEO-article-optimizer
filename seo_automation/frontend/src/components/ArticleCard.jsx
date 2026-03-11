@@ -30,8 +30,21 @@ export default function ArticleCard({ article, onSelect }) {
       whileHover={{ scale: 1.03 }}
       transition={{ duration: 0.2 }}
       onClick={() => onSelect(article)}
-      className="flex flex-col h-full rounded-2xl bg-white shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-lg break-words"
+      className="flex flex-col h-full rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg break-words"
     >
+      {/* Hero Image */}
+      {article.image_url && (
+        <div className="w-full h-40 overflow-hidden bg-gray-100">
+          <img
+            src={article.image_url}
+            alt={article.title || 'Article image'}
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        </div>
+      )}
+
+      <div className="p-6 flex flex-col flex-1">
       <h3 className="text-base font-bold text-[#1D1D1F] leading-snug mb-2 line-clamp-2">
         {article.title || 'Untitled Article'}
       </h3>
@@ -54,6 +67,7 @@ export default function ArticleCard({ article, onSelect }) {
         <span className="text-sm font-medium text-[#1D1D1F] hover:underline underline-offset-4">
           Preview article →
         </span>
+      </div>
       </div>
     </motion.div>
   );

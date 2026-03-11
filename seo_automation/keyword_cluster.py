@@ -5,6 +5,7 @@ Uses OpenAI to semantically cluster related keywords, identifying
 a primary keyword and supporting keywords for each cluster.
 """
 
+import concurrent.futures
 import json
 import logging
 from typing import Any, Dict, List
@@ -41,9 +42,9 @@ def cluster_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     max_per_batch = 100
     all_clusters: List[Dict[str, Any]] = []
 
-    for i in range(0, len(keyword_list), max_per_batch):
-        batch = keyword_list[i : i + max_per_batch]
+    batches = [keyword_list[i : i + max_per_batch] for i in range(0, len(keyword_list), max_per_batch)]
 
+    def process_batch(batch, batch_index):
         system_prompt = (
             "You are an SEO content strategist specialising in the Indian education "
             "and competitive exam space.\n\n"
@@ -74,7 +75,8 @@ def cluster_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         )
 
         user_prompt = f"Keywords to cluster:\n{json.dumps(batch, indent=2)}"
-
+        
+        batch_clusters = []
         try:
             result = chat_completion_json(system_prompt, user_prompt, max_tokens=4096)
             clusters = result.get("clusters", [])
@@ -85,14 +87,21 @@ def cluster_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     and "cluster_name" in cluster
                     and "primary_keyword" in cluster
                 ):
-                    all_clusters.append({
+                    batch_clusters.append({
                         "cluster_name": cluster["cluster_name"],
                         "primary_keyword": cluster["primary_keyword"],
                         "supporting_keywords": cluster.get("supporting_keywords", []),
                     })
 
         except Exception as exc:
-            logger.error("Keyword clustering failed for batch %d: %s", i, exc)
+            logger.error("Keyword clustering failed for batch %d: %s", batch_index, exc)
+            
+        return batch_clusters
+        
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = [executor.submit(process_batch, batch, i) for i, batch in enumerate(batches)]
+        for future in concurrent.futures.as_completed(futures):
+            all_clusters.extend(future.result())
 
     logger.info(
         "Clustering: %d keywords → %d clusters",

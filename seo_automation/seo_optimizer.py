@@ -5,6 +5,7 @@ Converts Markdown to HTML, injects JSON-LD schema markup, validates
 keyword density, and ensures all SEO best practices are met.
 """
 
+import concurrent.futures
 import json
 import logging
 import re
@@ -92,9 +93,14 @@ def optimize_articles(
     """
     bp_map = {bp.get("id", bp.get("cluster_id", i)): bp for i, bp in enumerate(blueprints)}
     optimised = []
-    for article in articles:
-        bp = bp_map.get(article.get("blueprint_id"), {})
-        optimised.append(optimize_article(article, bp))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {
+            executor.submit(optimize_article, article, bp_map.get(article.get("blueprint_id"), {})): article 
+            for article in articles
+        }
+        for future in concurrent.futures.as_completed(futures):
+            optimised.append(future.result())
+            
     return optimised
 
 

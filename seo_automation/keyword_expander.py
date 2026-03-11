@@ -5,6 +5,7 @@ Uses OpenAI to generate 5–10 long-tail variations per keyword,
 targeting questions and phrases real users type into search engines.
 """
 
+import concurrent.futures
 import json
 import logging
 from typing import Any, Dict, List
@@ -29,8 +30,9 @@ def expand_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, str]]:
     expanded: List[Dict[str, str]] = []
     batch_size = 10
 
-    for i in range(0, len(keywords), batch_size):
-        batch = keywords[i : i + batch_size]
+    batches = [keywords[i : i + batch_size] for i in range(0, len(keywords), batch_size)]
+
+    def process_batch(batch, batch_index):
         keyword_list = [kw["keyword"] for kw in batch]
 
         system_prompt = (
@@ -59,6 +61,7 @@ def expand_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, str]]:
 
         user_prompt = f"Expand these keywords:\n{json.dumps(keyword_list)}"
 
+        batch_expanded = []
         try:
             result = chat_completion_json(system_prompt, user_prompt)
 
@@ -66,14 +69,21 @@ def expand_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, str]]:
                 if isinstance(variations, list):
                     for variant in variations:
                         if isinstance(variant, str) and variant.strip():
-                            expanded.append({
+                            batch_expanded.append({
                                 "keyword": variant.strip().lower(),
                                 "source": f"expanded:{seed_kw}",
                                 "timestamp": _now(),
                             })
 
         except Exception as exc:
-            logger.error("Keyword expansion failed for batch %d: %s", i, exc)
+            logger.error("Keyword expansion failed for batch %d: %s", batch_index, exc)
+            
+        return batch_expanded
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = [executor.submit(process_batch, batch, i) for i, batch in enumerate(batches)]
+        for future in concurrent.futures.as_completed(futures):
+            expanded.extend(future.result())
 
     logger.info(
         "Keyword expansion: %d seeds → %d long-tail keywords",

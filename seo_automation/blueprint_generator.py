@@ -6,6 +6,7 @@ SEO title, slug, meta description, article outline, FAQ questions,
 semantic keywords, and featured snippet candidate answers.
 """
 
+import concurrent.futures
 import json
 import logging
 import re
@@ -100,10 +101,14 @@ def generate_blueprints(clusters: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         List of blueprint dicts.
     """
     blueprints: List[Dict[str, Any]] = []
-    for cluster in clusters:
-        bp = generate_blueprint(cluster)
-        if bp:
-            blueprints.append(bp)
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(generate_blueprint, cluster): cluster for cluster in clusters}
+        for future in concurrent.futures.as_completed(futures):
+            bp = future.result()
+            if bp:
+                blueprints.append(bp)
+                
     logger.info("Generated %d blueprints from %d clusters", len(blueprints), len(clusters))
     return blueprints
 

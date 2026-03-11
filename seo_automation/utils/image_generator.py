@@ -6,6 +6,7 @@ for articles. Only uses the Gemini API (not OpenAI) for image generation.
 """
 
 import base64
+import concurrent.futures
 import logging
 import os
 import time
@@ -109,16 +110,20 @@ def generate_images_for_articles(
     """
     results: Dict[int, Dict[str, Any]] = {}
 
-    for article in articles:
+    def process_article(article):
         article_id = article.get("id", 0)
         title = article.get("title", "")
         keyword = article.get("slug", "").replace("-", " ")
 
         image = generate_article_image(title, keyword, output_dir)
-        if image:
-            results[article_id] = image
+        return article_id, image
 
-        time.sleep(1)  # rate limit
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(process_article, article): article for article in articles}
+        for future in concurrent.futures.as_completed(futures):
+            article_id, image = future.result()
+            if image:
+                results[article_id] = image
 
     logger.info("Generated images for %d/%d articles", len(results), len(articles))
     return results

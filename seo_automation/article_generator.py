@@ -6,6 +6,7 @@ engines and AI answer engines. Includes direct answer summaries,
 question-based headings, tables, bullet lists, and FAQ sections.
 """
 
+import concurrent.futures
 import json
 import logging
 from typing import Any, Dict
@@ -132,10 +133,13 @@ def generate_articles(blueprints: list) -> list:
         List of article dicts.
     """
     articles = []
-    for bp in blueprints:
-        article = generate_article(bp)
-        if article.get("status") != "failed":
-            articles.append(article)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(generate_article, bp): bp for bp in blueprints}
+        for future in concurrent.futures.as_completed(futures):
+            article = future.result()
+            if article.get("status") != "failed":
+                articles.append(article)
+                
     logger.info("Generated %d articles from %d blueprints", len(articles), len(blueprints))
     return articles
 
