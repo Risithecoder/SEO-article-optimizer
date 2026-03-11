@@ -27,8 +27,7 @@ from ..seo_optimizer import optimize_articles
 from ..internal_linker import add_internal_links_batch
 from ..publisher import publish_article
 from ..utils.deduplicator import deduplicate_keywords
-from ..utils.image_generator import generate_images_for_articles
-
+from ..utils.image_placer import map_images_to_sections
 logger = logging.getLogger(__name__)
 
 
@@ -250,7 +249,7 @@ class PipelineController:
                                 for kw in unexpanded[:5]
                             ]
                         else:
-                            expanded = expand_keywords(unexpanded)
+                            expanded = expand_keywords(unexpanded, cancel_check=lambda: self._cancel_requested)
                         inserted = db.save_keywords(expanded)
                         db.mark_keywords_expanded([kw["id"] for kw in unexpanded])
                         self._add_log(f"Expanded {len(unexpanded)} keywords → {inserted} new long-tail")
@@ -276,7 +275,7 @@ class PipelineController:
                                 "supporting_keywords": [kw["keyword"] for kw in unclustered[1:4]],
                             }]
                         else:
-                            clusters_data = cluster_keywords(unclustered)
+                            clusters_data = cluster_keywords(unclustered, cancel_check=lambda: self._cancel_requested)
                         for cluster in clusters_data:
                             cid = db.save_cluster(cluster)
                             cluster["id"] = cid
@@ -311,7 +310,7 @@ class PipelineController:
                                 "snippet_answers": [],
                             } for c in new_clusters]
                         else:
-                            bps = generate_blueprints(new_clusters)
+                            bps = generate_blueprints(new_clusters, cancel_check=lambda: self._cancel_requested)
                         for bp in bps:
                             bp["id"] = db.save_blueprint(bp)
                         self._add_log(f"Created {len(bps)} article blueprints")
@@ -339,7 +338,7 @@ class PipelineController:
                                 "status": "draft",
                             } for bp in pending_bps]
                         else:
-                            arts = generate_articles(pending_bps)
+                            arts = generate_articles(pending_bps, cancel_check=lambda: self._cancel_requested)
                         for art in arts:
                             art["id"] = db.save_article(art)
                         self._add_log(f"Generated {len(arts)} articles")
@@ -356,20 +355,41 @@ class PipelineController:
                 self._set_step("image_gen", StepStatus.RUNNING, "Generating article images...")
                 try:
                     draft_arts = db.get_articles_needing_images()
+                    self._add_log(f"Found {len(draft_arts)} articles needing contextual images")
                     if draft_arts and not dry_run:
-                        # images is a Dict: {article_id: {"filename": "...", ...}}
-                        images = generate_images_for_articles(draft_arts)
-                        
-                        # Save the generated image paths to the database so the frontend can load them
-                        for art_id, img_info in images.items():
-                            file_name = img_info.get("filename")
-                            if file_name:
-                                db.update_article(art_id, {"image_url": f"/images/{file_name}"})
+                        images_generated = 0
+                        for art in draft_arts:
+                            if self._cancel_requested:
+                                self._add_log("Image generation cancelled mid-batch.", "WARNING")
+                                break
+                            try:
+                                self._add_log(f"Placing images in: {art.get('title', 'unknown')[:50]}")
+                                up_content, first_img_url = map_images_to_sections(
+                                    article_content=art.get("content", ""),
+                                    slug=art.get("slug", ""),
+                                    title=art.get("title", "")
+                                )
+                                # Only update if image generation ran and actually modified content
+                                updates = {}
+                                if up_content != art.get("content"):
+                                    updates["content"] = up_content
+                                    images_generated += 1
+                                    
+                                if first_img_url:
+                                    updates["image_url"] = first_img_url
+                                    
+                                if updates:
+                                    db.update_article(art["id"], updates)
+                                    self._add_log(f"  ✓ Images placed for article {art['id']}")
+                                else:
+                                    self._add_log(f"  ⚠ No eligible sections for images in article {art['id']}")
+                            except Exception as art_err:
+                                self._add_log(f"  ✗ Image placement failed for article {art['id']}: {art_err}", "ERROR")
                                 
-                        self._add_log(f"Generated {len(images)} images")
+                        self._add_log(f"Processed contextual images for {images_generated}/{len(draft_arts)} articles")
                     elif dry_run:
-                        self._add_log("[DRY RUN] Skipping image generation")
-                    self._set_step("image_gen", StepStatus.COMPLETED, f"{len(draft_arts)} images processed")
+                        self._add_log("[DRY RUN] Skipping contextual image generation")
+                    self._set_step("image_gen", StepStatus.COMPLETED, f"{len(draft_arts)} articles processed for images")
                 except Exception as e:
                     self._set_step("image_gen", StepStatus.FAILED, str(e))
                     self._add_log(f"Image generation failed: {e}", "ERROR")
@@ -384,7 +404,7 @@ class PipelineController:
                     drafts = db.get_unpublished_articles()
                     if drafts:
                         all_bps = db.get_all_blueprints()
-                        optimised = optimize_articles(drafts, all_bps)
+                        optimised = optimize_articles(drafts, all_bps, cancel_check=lambda: self._cancel_requested)
                         for art in optimised:
                             if art.get("id"):
                                 db.update_article(art["id"], {
@@ -409,7 +429,7 @@ class PipelineController:
                     pub_arts = db.get_published_articles()
                     all_clusters = db.get_all_clusters()
                     if opt_arts:
-                        linked = add_internal_links_batch(opt_arts, pub_arts, all_clusters, site_url=config.wp_url)
+                        linked = add_internal_links_batch(opt_arts, pub_arts, all_clusters, site_url=config.wp_url, cancel_check=lambda: self._cancel_requested)
                         for art in linked:
                             if art.get("id"):
                                 db.update_article(art["id"], {"html_content": art.get("html_content", "")})

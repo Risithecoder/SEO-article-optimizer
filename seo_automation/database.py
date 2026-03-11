@@ -303,9 +303,15 @@ class Database:
         return [dict(row) for row in cursor.fetchall()]
 
     def get_articles_needing_images(self) -> List[Dict[str, Any]]:
-        """Return articles that don't have an image URL yet."""
+        """Return articles that don't have inline images in their content yet."""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM articles WHERE (image_url IS NULL OR image_url = '') AND status != 'published'")
+        cursor.execute(
+            "SELECT * FROM articles WHERE content IS NOT NULL "
+            "AND content != '' "
+            "AND content NOT LIKE '%![%' "
+            "AND status != 'published' "
+            "AND length(content) > 500"
+        )
         return [dict(row) for row in cursor.fetchall()]
 
     def get_published_articles(self) -> List[Dict[str, Any]]:

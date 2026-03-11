@@ -122,7 +122,7 @@ def generate_article(blueprint: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-def generate_articles(blueprints: list) -> list:
+def generate_articles(blueprints: list, cancel_check=None) -> list:
     """
     Generate articles for a list of blueprints.
 
@@ -136,6 +136,10 @@ def generate_articles(blueprints: list) -> list:
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(generate_article, bp): bp for bp in blueprints}
         for future in concurrent.futures.as_completed(futures):
+            if cancel_check and cancel_check():
+                for f in futures:
+                    f.cancel()
+                break
             article = future.result()
             if article.get("status") != "failed":
                 articles.append(article)

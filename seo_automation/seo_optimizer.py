@@ -85,6 +85,7 @@ def optimize_article(article: Dict[str, Any], blueprint: Dict[str, Any]) -> Dict
 def optimize_articles(
     articles: List[Dict[str, Any]],
     blueprints: List[Dict[str, Any]],
+    cancel_check=None
 ) -> List[Dict[str, Any]]:
     """
     Optimise a list of articles against their blueprints.
@@ -99,6 +100,10 @@ def optimize_articles(
             for article in articles
         }
         for future in concurrent.futures.as_completed(futures):
+            if cancel_check and cancel_check():
+                for f in futures:
+                    f.cancel()
+                break
             optimised.append(future.result())
             
     return optimised

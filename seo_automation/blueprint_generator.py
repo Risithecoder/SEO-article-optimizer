@@ -90,7 +90,7 @@ def generate_blueprint(cluster: Dict[str, Any]) -> Dict[str, Any]:
         return _fallback_blueprint(cluster)
 
 
-def generate_blueprints(clusters: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def generate_blueprints(clusters: List[Dict[str, Any]], cancel_check=None) -> List[Dict[str, Any]]:
     """
     Generate blueprints for a list of keyword clusters.
 
@@ -105,6 +105,10 @@ def generate_blueprints(clusters: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(generate_blueprint, cluster): cluster for cluster in clusters}
         for future in concurrent.futures.as_completed(futures):
+            if cancel_check and cancel_check():
+                for f in futures:
+                    f.cancel()
+                break
             bp = future.result()
             if bp:
                 blueprints.append(bp)

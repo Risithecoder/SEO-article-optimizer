@@ -94,6 +94,7 @@ def add_internal_links_batch(
     all_published: List[Dict[str, Any]],
     clusters: List[Dict[str, Any]],
     site_url: str = "",
+    cancel_check=None
 ) -> List[Dict[str, Any]]:
     """Add internal links to a batch of articles."""
     # Combine published + current batch for cross-linking
@@ -101,6 +102,8 @@ def add_internal_links_batch(
 
     linked = []
     for article in articles:
+        if cancel_check and cancel_check():
+            break
         linked_article = add_internal_links(
             article, all_available, clusters, site_url
         )

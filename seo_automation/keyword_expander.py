@@ -16,7 +16,7 @@ from .utils.openai_client import chat_completion_json
 logger = logging.getLogger(__name__)
 
 
-def expand_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+def expand_keywords(keywords: List[Dict[str, Any]], cancel_check=None) -> List[Dict[str, str]]:
     """
     Expand a list of base keywords into long-tail search queries.
 
@@ -83,6 +83,10 @@ def expand_keywords(keywords: List[Dict[str, Any]]) -> List[Dict[str, str]]:
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         futures = [executor.submit(process_batch, batch, i) for i, batch in enumerate(batches)]
         for future in concurrent.futures.as_completed(futures):
+            if cancel_check and cancel_check():
+                for f in futures:
+                    f.cancel()
+                break
             expanded.extend(future.result())
 
     logger.info(
